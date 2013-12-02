@@ -110,6 +110,17 @@ out.ix = which(mal>=q[91])  # .9 cutoff
 out.ix2 = which(mal>=q[96]) # .95
 # not surprisingly, our friend 153 is in here.
 mal[153] # 177.7868 . Yup, this is our worst outlier.
+# I think it might be interesting to color my earlier pairs plot using a color gradient
+# that highlights outliers based on their mahalanobis distance.
+
+if (!require("RColorBrewer")) {
+  install.packages("RColorBrewer")
+  library(RColorBrewer)
+}
+
+# Pairs plot with white-yellow-orange-red palette highlighting our outliers.
+pal = colorRampPalette(brewer.pal(9,"YlOrRd"))(max(mal))
+plot(dat[,4:11], col=pal[ceiling(mal)])
 
 #################################################################################
 
