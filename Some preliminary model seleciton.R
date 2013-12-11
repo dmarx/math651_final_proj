@@ -361,7 +361,7 @@ crit.vals.full = list(cooks = 4/n
 
 ###########################################################################
 
-# narrowing in on 11 most problematic observations for additional analysis
+# narrowing in on 12 most problematic observations for additional analysis
 
 ix = c(20,21,35,73, 88,89,127,128,133,134,153,170)
 
@@ -393,7 +393,7 @@ df.diag.full.int = data.frame(index = ix
                           ,abs.stud.del.res = abs(del.res.full.interact[ix]))
 
 df.eval.full.int = as.data.frame(abs(df.diag.full.int[,2:5]) > crit.vals.full.int[-5])
-df.eval.full.int = cbind(df.diag.full$index, df.eval.full.int)
+df.eval.full.int = cbind(df.diag.full.int$index, df.eval.full.int)
 
 # In the model with interaction terms, only observation 73 was highlighted as a problematic
 # point based on the deleted residuals, but it looks like we actually have many influential 
@@ -429,3 +429,71 @@ sort(H.sel, decreasing=T)[1:28]
 plot(H.full)
 points(H.int, col='blue')
 points(H.sel, col='red')
+
+del.res.sel = studres(mod.full.selectInteract)
+
+# Bonferroni test
+crit.b.sel = qt(1 - a/(2 * n), n - p.sel - 1)  # 4.197
+max(abs(del.res.sel))  # 4.08016 , no outliers by bonferroni at a=0.01
+plot(sort(del.res.sel))
+
+
+crit.vals.sel = list(cooks = 4/n
+                       , dffits = 2 * sqrt(p.sel/n)
+                       , levg=2*h.bar.sel
+                       , bonf=crit.b.sel
+                       , dfbetas = 2/sqrt(n))
+
+ix = c(20,21,35,73, 88,89,127,128,133,134,153,170, 35, 34) # added 35 and 34
+
+df.diag.sel = data.frame(index = ix
+                              ,cooks = cooks.distance(mod.full.selectInteract)[ix]
+                              ,dffits = dffits(mod.full.selectInteract)[ix]
+                              ,leverage = H.sel[ix]
+                              ,abs.stud.del.res = abs(del.res.sel[ix]))
+
+df.eval.sel = as.data.frame(abs(df.diag.sel[,2:5]) > crit.vals.sel[-5])
+df.eval.sel = cbind(df.diag.sel$index, df.eval.sel)
+
+# observations 35 and 34 have significant influence in this model by cooks, DFFITS and leverage,
+# but not in any other models. Influence of observations 153, 170, 133, 88, 73, 35, and 20
+# corroborated. Observations 21, 89, 127, and 134 had high leverage, but not significant
+# influence, and observation 128 had neither.
+#
+# Observation 153 had highest leverage and extremely high DFFITS and cooks distance in 
+# this model. Observation 133 had next highest cooks and DFFITS, and the third highest leverage.
+#
+# 35 and 34 don't seem like serious concerns, but should probably investigate their influence
+# on the earlier models. At the very least, will keep them in mind for the next (and last) model
+
+############################################################################3
+
+# Use step regression to select non-categorical variables
+formula.cat.only = 'a6 ~ season + size + speed '
+
+mod.reduced = step(mod.full
+                  ,scope=list(end=formula.cat.only, start=formula.full)
+                  ,direction='backward')
+
+mod.reduced$call # this isn't respecting keeping "speed" in the model
+
+# Gives same model. Whatever, I'll just work with this one. Doesn't really matter.
+mod.reduced = step(mod.full
+                   #,scope=list(end=formula.cat.only, start=formula.full)
+                   ,direction='backward')
+
+##################################################################
+
+# testing addition of the interaction term where one of the variables is strong and the other
+# is weak.
+
+formula.seasonPO4 = paste(formula.full, " + season:PO4")
+  
+mod.seasonPO4 = lm(formula.seasonPO4, dat)
+
+anova(mod.full, mod.seasonPO4) # p value = .3736
+
+plot(mod.full$residuals, mod.seasonPO4$residuals)
+
+# Also, try the "canary in the coal min:" Try an interaction with a completely random variable
+
