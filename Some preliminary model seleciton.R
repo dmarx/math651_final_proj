@@ -1,4 +1,5 @@
-library(DMwR)
+library(DMwR) # for knnImputation and algae data
+library(MASS) # for studres
 data(algae)
 dat = knnImputation(algae)
 
@@ -481,6 +482,91 @@ mod.reduced$call # this isn't respecting keeping "speed" in the model
 mod.reduced = step(mod.full
                    #,scope=list(end=formula.cat.only, start=formula.full)
                    ,direction='backward')
+
+
+# Studentized deleted residuals
+del.res.reduced = studres(mod.reduced)
+
+# Bonferroni test
+n = nrow(dat)
+p = summary(mod.reduced)$df[1]
+a = 0.01 
+crit.b.reduced = qt(1 - a/(2 * n), n - p - 1)  # 4.1527
+max(abs(del.res.reduced))  # 4.964
+which(del.res.reduced>crit.b.reduced) # only observations 133 and 170
+
+# X outliers from leverage
+H.red = hatvalues(mod.reduced)
+h.bar.red = p/n #.58
+which(H.red > 2 * h.bar.red)
+plot(sort(H.red))
+hist(H.red)
+# usual suspects. 98, 163 and 175 are new
+# 20  21  35  88  89  98 127 128 133 134 153 163 175 
+ix = c(20,21,35,73, 88,89,127,128,133,134,153,170, 34, 98, 163, 175)
+
+
+crit.vals.red = list(cooks = 4/n
+                          , dffits = 2 * sqrt(p/n)
+                          , levg=2*h.bar.red
+                          , bonf=crit.b.reduced
+                          , dfbetas = 2/sqrt(n)
+)
+
+
+
+df.diag.red = data.frame(index = ix
+                         ,cooks = cooks.distance(mod.reduced)[ix]
+                         ,dffits = dffits(mod.reduced)[ix]
+                         ,leverage = H.red[ix]
+                         ,abs.stud.del.res = abs(del.res.reduced[ix]))
+
+df.eval.red = as.data.frame(abs(df.diag.red[,2:5]) > crit.vals.red[-5])
+df.eval.red = cbind(df.diag.red$index, df.eval.red)
+
+# Our new points are 98, 163, and 175. They all meet the leverage criteria
+# but their cooks and DFFITS are below threshhold. By Cooks and DFFITS and
+# leverage, the most influential points in the model are 89, 133, 134, and
+# 153. 170 did not have high leverage, but it had high cooks and DFFTIS.
+
+
+# Let's bring it all together and rebuild each analysis with all
+# the considered observations from the earlier analyses:
+
+df.diag.all = data.frame(row.names = ix #index = ix
+                     ## REDUCED (BACKWARDS ELIMINATION VIA AIC) ## 
+                     ,cooks.red = cooks.distance(mod.reduced)[ix]
+                     ,dffits.red = dffits(mod.reduced)[ix]
+                     ,leverage.red = H.red[ix]
+                     ,studres.red = del.res.reduced[ix]
+                     ## FULL ##
+                    ,cooks.ful = cooks.distance(mod.full)[ix]
+                    ,dffits.ful = dffits(mod.full)[ix]
+                    ,leverage.ful = H.full[ix]
+                    ,studres.ful = del.res.full[ix]
+                    ## SELECTED INTERACTIONS
+                    ,cooks.sel = cooks.distance(mod.full.selectInteract)[ix]
+                    ,dffits.sel = dffits(mod.full.selectInteract)[ix]
+                    ,leverage.sel = H.sel[ix]
+                    ,studres.sel = del.res.sel[ix]
+                    ## ALL INTERACTIONS ##
+                    ,cooks.int = cooks.distance(mod.full.interact)[ix]
+                    ,dffits.int = dffits(mod.full.interact)[ix]
+                    ,leverage.int = H.int[ix]
+                    ,studres.int = del.res.full.interact[ix]
+                    )
+
+dim(df.diag.all) # 16x16, that's a funny coincidence...
+t(df.diag.all)
+
+
+# Conclusion: observations 
+
+
+
+
+
+
 
 ##################################################################
 
