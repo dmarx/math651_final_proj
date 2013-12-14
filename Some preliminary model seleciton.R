@@ -557,7 +557,9 @@ df.diag.all = data.frame(row.names = ix #index = ix
                     )
 
 dim(df.diag.all) # 16x16, that's a funny coincidence...
-t(df.diag.all)
+
+
+write.csv(df.diag.all, 'math651_final_outliers.csv')
 
 
 # Conclusion: observations 
