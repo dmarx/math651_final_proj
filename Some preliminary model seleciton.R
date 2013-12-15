@@ -533,6 +533,7 @@ df.eval.red = cbind(df.diag.red$index, df.eval.red)
 # Let's bring it all together and rebuild each analysis with all
 # the considered observations from the earlier analyses:
 
+ix = sort(ix)
 df.diag.all = data.frame(row.names = ix #index = ix
                      ## REDUCED (BACKWARDS ELIMINATION VIA AIC) ## 
                      ,cooks.red = cooks.distance(mod.reduced)[ix]
@@ -556,7 +557,84 @@ df.diag.all = data.frame(row.names = ix #index = ix
                     ,studres.int = del.res.full.interact[ix]
                     )
 
-dim(df.diag.all) # 16x16, that's a funny coincidence...
+# Leverage analysis
+####################
+
+lev.diag = with(df.diag.all, cbind(
+  leverage.red, leverage.ful, leverage.sel, leverage.int
+))
+rownames(lev.diag) = ix
+
+crit.levg = c(
+  crit.vals.red$levg,
+  crit.vals.full$levg,
+  crit.vals.sel$levg,  
+  crit.vals.full.int$levg
+)
+
+#lev.diag > crit.levg # this isn't doing what I thought it was...
+cbind(
+c(lev.diag[,1] > crit.levg[1]),
+c(lev.diag[,2] > crit.levg[2]),
+c(lev.diag[,3] > crit.levg[3]),
+c(lev.diag[,4] > crit.levg[4])
+)
+
+# Studentized deleted residuals analysis (bonferroni)
+#####################################################
+
+bonf.diag = with(df.diag.all, cbind(
+  studres.red, studres.ful, studres.sel, studres.int
+))
+rownames(bonf.diag) = ix
+
+crit.bonf = c(
+  crit.vals.red$bonf,
+  crit.vals.full$bonf,
+  crit.vals.sel$bonf,  
+  crit.vals.full.int$bonf
+)
+
+cbind(
+  c(abs(bonf.diag[,1]) > crit.bonf[1]),
+  c(abs(bonf.diag[,2]) > crit.bonf[2]),
+  c(abs(bonf.diag[,3]) > crit.bonf[3]),
+  c(abs(bonf.diag[,4]) > crit.bonf[4])
+)
+
+# DFFITS analysis
+#################
+
+dffits.diag = with(df.diag.all, cbind(
+  dffits.red, dffits.ful, dffits.sel, dffits.int
+))
+rownames(dffits.diag) = ix
+
+crit.dffits = c(
+  crit.vals.red$dffits,
+  crit.vals.full$dffits,
+  crit.vals.sel$dffits,  
+  crit.vals.full.int$dffits
+)
+
+cbind(
+  c(abs(dffits.diag[,1]) > crit.dffits[1]),
+  c(abs(dffits.diag[,2]) > crit.dffits[2]),
+  c(abs(dffits.diag[,3]) > crit.dffits[3]),
+  c(abs(dffits.diag[,4]) > crit.dffits[4])
+)
+
+
+# cook's analysis
+#################
+
+cooks.diag = with(df.diag.all, cbind(
+  cooks.red, cooks.ful, cooks.sel, cooks.int
+  ))
+rownames(cooks.diag) = ix
+cooks.diag > 4/n
+# critical value for cooks distance is same for all models: 4/n = .02
+
 
 
 write.csv(df.diag.all, 'math651_final_outliers.csv')
