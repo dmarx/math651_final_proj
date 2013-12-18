@@ -635,7 +635,10 @@ rownames(cooks.diag) = ix
 cooks.diag > 4/n
 # critical value for cooks distance is same for all models: 4/n = .02
 
-
+# Cooks distance sanity check
+sum(cooks.distance(mod.full) > .02) #14
+candidates.full = union(which(del.res.full>crit.vals.full$bonf), which(H.full>2*mean(H.full)))
+sum(cooks.distance(mod.full)[candidates.full] > .02) #5
 
 write.csv(df.diag.all, 'math651_final_outliers.csv')
 
